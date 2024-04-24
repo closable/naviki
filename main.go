@@ -6,23 +6,64 @@ import (
 	"sync"
 )
 
+type cache struct {
+	store map[int]int
+	index int
+	mu    sync.RWMutex
+}
+
+func (c *cache) addValue(value int) {
+	findIdx := c.findIndex(value)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if findIdx == 0 {
+		c.index++
+		c.store[c.index] = value
+	}
+}
+
+func (c *cache) findIndex(value int) int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for k, v := range c.store {
+		if v == value {
+			return k
+		}
+	}
+	return 0
+}
+
 func main() {
 	// variant_1(20)
+	// variant_2(7)
 
-	count := 5
-	done := make(chan struct{})
-	chans := make([]chan int, count)
+	variant_3()
 
-	for i := 0; i < count; i++ {
-		ch := addChannel(done)
-		chans[i] = ch
+}
+
+func variant_3() {
+
+	cache := &cache{store: map[int]int{}}
+
+	for i := 0; i < 10000; i++ {
+		if i%5 == 0 {
+			go func() {
+				cache.addValue(rand.Intn(1000))
+
+			}()
+		} else {
+			go func() {
+				v := rand.Intn(1000)
+				ind := cache.findIndex(v)
+				if ind != 0 {
+					fmt.Printf("element in the cache: index-%d  value-%d\n", ind, v)
+				}
+			}()
+		}
+
 	}
 
-	result := mergeChans(done, chans...)
-
-	for v := range result {
-		fmt.Printf("%d ", v)
-	}
+	fmt.Println(cache.store)
 
 }
 
@@ -66,6 +107,23 @@ func mergeChans(done chan struct{}, ch ...chan int) chan int {
 	}()
 
 	return res
+}
+
+func variant_2(elements int) {
+	count := elements
+	done := make(chan struct{})
+	chans := make([]chan int, count)
+
+	for i := 0; i < count; i++ {
+		ch := addChannel(done)
+		chans[i] = ch
+	}
+
+	result := mergeChans(done, chans...)
+
+	for v := range result {
+		fmt.Printf("%d ", v)
+	}
 }
 
 func variant_1(elements int) {
